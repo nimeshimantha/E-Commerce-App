@@ -1,6 +1,9 @@
+import 'package:e_commerce/components/custom_button.dart';
+import 'package:e_commerce/components/custom_text_field.dart';
+import 'package:e_commerce/models/user.dart';
+import 'package:e_commerce/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_commerce/models/user.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -10,9 +13,25 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map) {
+        final emailArg = args['email'] as String?;
+        if (emailArg != null && emailArg.isNotEmpty) {
+          emailController.text = emailArg;
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -21,144 +40,262 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  void _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final email = emailController.text.trim();
+
+    String name = 'User';
+    if (args is Map && args['name'] is String && (args['name'] as String).isNotEmpty) {
+      name = args['name'] as String;
+    } else {
+      name = email.split('@').first;
+      name = name[0].toUpperCase() + name.substring(1);
+    }
+
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (!mounted) return;
+    context.read<UserProfile>().setUser(
+      name: name,
+      email: email,
+    );
+
+    setState(() => _isLoading = false);
+    Navigator.pushReplacementNamed(context, '/dash');
+  }
+
+  void _showForgotPasswordDialog() {
+    final resetController = TextEditingController(text: emailController.text);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your email address and we will send you a link to reset your password.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email Address',
+                hintText: 'user@example.com',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Password reset instructions sent to your email.'),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+            },
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+      ),
+      body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Welcome Back",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  "Login to your account",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-                SizedBox(height: 30),
-                TextField(
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.orange),
+            padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // App Icon / Logo
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: const Icon(
+                      Icons.electric_bolt_rounded,
+                      color: Colors.white,
+                      size: 26,
                     ),
                   ),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.orange),
+                  const SizedBox(height: 24),
+
+                  // Header Texts
+                  Text(
+                    'Welcome Back',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.8,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign in to access your curated footwear and order history.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
+                    ),
+                  ),
+
+                  const SizedBox(height: 36),
+
+                  // Email Field
+                  CustomTextField(
+                    controller: emailController,
+                    label: 'Email Address',
+                    hint: 'name@example.com',
+                    prefixIcon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!val.contains('@') || !val.contains('.')) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Password Field
+                  CustomTextField(
+                    controller: passwordController,
+                    label: 'Password',
+                    hint: '••••••••',
+                    prefixIcon: Icons.lock_outline_rounded,
+                    obscureText: _obscurePassword,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 20,
+                        color: AppColors.textMutedLight,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // Forgot password
-                    },
-                    child: Text(
-                      "Forgot Password?",
-                      style: TextStyle(color: Colors.orange),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Login
-                      final email = emailController.text;
-                      final password = passwordController.text;
-                      debugPrint("Email: $email, Password: $password");
-
-                      // If signup passed args, prefer those.
-                      final args = ModalRoute.of(context)?.settings.arguments;
-                      if (args is Map) {
-                        final nameArg = args['name'] as String?;
-                        final emailArg = args['email'] as String?;
-                        if ((nameArg?.isNotEmpty ?? false) &&
-                            (emailArg?.isNotEmpty ?? false)) {
-                          context
-                              .read<UserProfile>()
-                              .setUser(name: nameArg!, email: emailArg!);
-                        }
-                      }
-
-                      // If no args, but email field not empty, set a basic profile using email.
-                      if (email.isNotEmpty &&
-                          (context.read<UserProfile>().email == null)) {
-                        context
-                            .read<UserProfile>()
-                            .setUser(name: 'User', email: email);
-                      }
-
-                      Navigator.pushReplacementNamed(context, '/dash');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      "Login",
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text("Don't have an account? "),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/signup');
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
                       },
-                      child: Text(
-                        "Sign Up",
+                    ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Please enter your password';
+                      }
+                      if (val.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Forgot Password
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _showForgotPasswordDialog,
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text(
+                        'Forgot Password?',
                         style: TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
+                          color: AppColors.secondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
                       ),
-                    )
-                  ],
-                ),
-              ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Login Button
+                  CustomButton(
+                    text: 'Sign In',
+                    isLoading: _isLoading,
+                    icon: Icons.login_rounded,
+                    onPressed: _handleLogin,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Sign up row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Don\'t have an account? ',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/signup');
+                        },
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

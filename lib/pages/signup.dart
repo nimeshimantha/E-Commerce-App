@@ -1,6 +1,9 @@
+import 'package:e_commerce/components/custom_button.dart';
+import 'package:e_commerce/components/custom_text_field.dart';
+import 'package:e_commerce/models/user.dart';
+import 'package:e_commerce/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:e_commerce/models/user.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -10,6 +13,7 @@ class SignupPage extends StatefulWidget {
 }
 
 class _SignupPageState extends State<SignupPage> {
+  final _formKey = GlobalKey<FormState>();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -18,6 +22,7 @@ class _SignupPageState extends State<SignupPage> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -28,164 +33,237 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
+  void _handleSignup() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+
+    if (!mounted) return;
+    context.read<UserProfile>().setUser(name: name, email: email);
+
+    setState(() => _isLoading = false);
+
+    Navigator.pushReplacementNamed(
+      context,
+      '/login',
+      arguments: {
+        'name': name,
+        'email': email,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+      ),
+      body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Create Account",
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  "Sign up to get started",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-                SizedBox(height: 30),
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: "Full Name",
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.orange),
+            padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Brand Icon
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: const Icon(
+                      Icons.person_add_alt_1_rounded,
+                      color: Colors.white,
+                      size: 26,
                     ),
                   ),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.orange),
+                  const SizedBox(height: 24),
+
+                  // Header Titles
+                  Text(
+                    'Create Account',
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.8,
+                      color: isDark
+                          ? AppColors.textPrimaryDark
+                          : AppColors.textPrimaryLight,
                     ),
                   ),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: "Password",
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.orange),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Join Elegance Wear to experience premium athletic footwear.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark
+                          ? AppColors.textSecondaryDark
+                          : AppColors.textSecondaryLight,
                     ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Full Name
+                  CustomTextField(
+                    controller: nameController,
+                    label: 'Full Name',
+                    hint: 'John Doe',
+                    prefixIcon: Icons.badge_outlined,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Please enter your full name';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Email
+                  CustomTextField(
+                    controller: emailController,
+                    label: 'Email Address',
+                    hint: 'name@example.com',
+                    prefixIcon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (val) {
+                      if (val == null || val.trim().isEmpty) {
+                        return 'Please enter your email';
+                      }
+                      if (!val.contains('@') || !val.contains('.')) {
+                        return 'Please enter a valid email';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // Password
+                  CustomTextField(
+                    controller: passwordController,
+                    label: 'Password',
+                    hint: '••••••••',
+                    prefixIcon: Icons.lock_outline_rounded,
+                    obscureText: _obscurePassword,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 20,
+                        color: AppColors.textMutedLight,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
                     ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Please enter a password';
+                      }
+                      if (val.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
                   ),
-                ),
-                SizedBox(height: 20),
-                TextField(
-                  controller: confirmPasswordController,
-                  obscureText: _obscureConfirmPassword,
-                  decoration: InputDecoration(
-                    labelText: "Confirm Password",
-                    border: OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.orange),
-                    ),
+
+                  const SizedBox(height: 20),
+
+                  // Confirm Password
+                  CustomTextField(
+                    controller: confirmPasswordController,
+                    label: 'Confirm Password',
+                    hint: '••••••••',
+                    prefixIcon: Icons.lock_outline_rounded,
+                    obscureText: _obscureConfirmPassword,
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscureConfirmPassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        size: 20,
+                        color: AppColors.textMutedLight,
                       ),
-                      onPressed: () => setState(() =>
-                          _obscureConfirmPassword = !_obscureConfirmPassword),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 30),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Signup
-                      String name = nameController.text;
-                      String email = emailController.text;
-                      String password = passwordController.text;
-                      String confirmPassword = confirmPasswordController.text;
-
-                      debugPrint("Name: $name");
-                      debugPrint("Email: $email");
-                      debugPrint("Password: $password");
-                      debugPrint("Confirm Password: $confirmPassword");
-
-                      // After simple validation, store user and go to login
-                      if (name.isNotEmpty &&
-                          email.isNotEmpty &&
-                          password == confirmPassword) {
-                        context
-                            .read<UserProfile>()
-                            .setUser(name: name, email: email);
-                      }
-                      // After successful signup, navigate to login with args
-                      Navigator.pushReplacementNamed(
-                        context,
-                        '/login',
-                        arguments: {
-                          'name': name,
-                          'email': email,
-                        },
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      "Sign Up",
-                      style: TextStyle(fontSize: 18),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text("Already have an account? "),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushNamed(context, '/login');
+                      onPressed: () {
+                        setState(() => _obscureConfirmPassword =
+                            !_obscureConfirmPassword);
                       },
-                      child: Text(
-                        "Login",
+                    ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Please confirm your password';
+                      }
+                      if (val != passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+
+                  const SizedBox(height: 36),
+
+                  // Submit Button
+                  CustomButton(
+                    text: 'Create Account',
+                    isLoading: _isLoading,
+                    icon: Icons.check_circle_outline_rounded,
+                    onPressed: _handleSignup,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Already have account
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Already have an account? ',
                         style: TextStyle(
-                          color: Colors.orange,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: isDark
+                              ? AppColors.textSecondaryDark
+                              : AppColors.textSecondaryLight,
                         ),
                       ),
-                    )
-                  ],
-                ),
-              ],
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pushNamed(context, '/login');
+                        },
+                        child: const Text(
+                          'Sign In',
+                          style: TextStyle(
+                            color: AppColors.secondary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
